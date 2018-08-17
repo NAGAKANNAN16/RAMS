@@ -1,0 +1,58 @@
+import cv2, sys, numpy, os, time
+
+counter = 0
+scale = 4
+noOfPics = 100
+
+#Get the name of the person whose pictures are being captured
+nameOfPerson = sys.argv[1]
+
+#Find or create the folder containing training data (Pictures)
+db = 'database'
+path = os.path.join(db, nameOfPerson)
+if not os.path.isdir(path):
+    os.makedirs(path)
+
+#Fetch trained frontal face classifier
+haarFaceClassifier = cv2.CascadeClassifier('haarcascade_frontalface_default.xml')
+
+#Capture a frame from camera
+webcam = cv2.VideoCapture(0)
+
+#Set the resolution of the camera
+webcam.set(3,320)
+webcam.set(4,240)
+
+print "Camera on"
+
+
+#Loop until the required number of pics are captured
+while counter < noOfPics:
+
+    #Grab a frame
+    (rval,im) = webcam.read()
+
+    #Process frame and detect faces
+    im = cv2.flip(im, 1, 0)
+    imGrayscale = cv2.cvtColor(im, cv2.COLOR_BGR2GRAY)
+    imScaled = cv2.resize(imGrayscale, (imGrayscale.shape[1] / scale, imGrayscale.shape[0] / scale))
+    faces = haarFaceClassifier.detectMultiScale(imScaled)
+    faces = sorted(faces, key=lambda x: x[3])
+
+    #If faces found, resize and write to database
+    if faces:
+
+        print("Face captured")
+        print(counter)
+
+        faceOne = faces[0]
+        (x, y, w, h) = [v * scale for v in faceOne]
+        face = imGrayscale[y:y + h, x:x + w]
+        faceResized = cv2.resize(face, (112, 92))
+        pin=sorted([int(n[:n.find('.')]) for n in os.listdir(path)
+               if n[0]!='.' ]+[0])[-1] + 1
+        cv2.imwrite('%s/%s.png' % (path, pin), faceResized)
+	time.sleep(0.4)
+	counter += 1
+
+print str(counter) + " images saved to " + nameOfPerson +" folder in database "
